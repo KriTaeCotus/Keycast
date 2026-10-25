@@ -562,6 +562,9 @@ extern Option<bool, false> UseRawInput;
 #else
 constexpr bool UseRawInput = false;
 #endif
+#if defined(__APPLE__) && !defined(TARGET_IPHONE)
+extern Option<bool, false> SeparateKeyboards;
+#endif
 extern Option<bool> UsePhysicalVmuMemory;
 
 #ifdef USE_LUA

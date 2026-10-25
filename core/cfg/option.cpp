@@ -235,6 +235,9 @@ Option<bool> PerGameVmu("PerGameVmu", true, "config");
 #ifdef _WIN32
 Option<bool, false> UseRawInput("RawInput", false, "input");
 #endif
+#if defined(__APPLE__) && !defined(TARGET_IPHONE)
+Option<bool, false> SeparateKeyboards("SeparateKeyboards", false, "input");
+#endif
 Option<bool> UsePhysicalVmuMemory("UsePhysicalVmuMemory", false);
 
 #ifdef USE_LUA

@@ -1103,6 +1103,10 @@ void gui_settings_controls(std::array<bool, 4>& mapleDevicesChanges, std::array<
 #if defined(_WIN32) && !defined(TARGET_UWP)
 	OptionCheckbox(T("Use Raw Input"), config::UseRawInput, T("Supports multiple pointing devices (mice, light guns) and keyboards"));
 #endif
+#if defined(__APPLE__) && !defined(TARGET_IPHONE)
+	OptionCheckbox(T("Separate Keyboards"), config::SeparateKeyboards,
+			T("Read each keyboard separately so that each one can be assigned to its own port. Requires the Input Monitoring permission"));
+#endif
 
 	ImGui::Spacing();
 	header(T("Dreamcast Devices"));

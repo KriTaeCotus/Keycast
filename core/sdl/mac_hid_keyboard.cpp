@@ -239,13 +239,16 @@ static bool checkPermission()
 	return false;
 }
 
-static void stop()
+// Keys still pressed are released unless shutting down, since the GUI
+// and emulator are already terminated by then.
+static void stop(bool releaseKeys = true)
 {
 	if (manager == nullptr)
 		return;
 	for (auto& [id, keyboard] : keyboards)
 	{
-		keyboard->releaseAll();
+		if (releaseKeys)
+			keyboard->releaseAll();
 		GamepadDevice::Unregister(keyboard);
 	}
 	keyboards.clear();
@@ -313,7 +316,7 @@ void update()
 
 void term()
 {
-	stop();
+	stop(false);
 }
 
 bool active()

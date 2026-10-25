@@ -103,6 +103,9 @@ static bool permissionDenied;
 // keyboard if they share the same unique id.
 static std::map<IOHIDDeviceRef, std::shared_ptr<MacHidKeyboard>> devices;
 static std::map<std::string, std::shared_ptr<MacHidKeyboard>> keyboards;
+static bool capturing;
+static CaptureResult captureResult;
+static std::shared_ptr<MacHidKeyboard> capturedKeyboard;
 
 static std::string getStringProperty(IOHIDDeviceRef device, CFStringRef key)
 {
@@ -212,6 +215,13 @@ static void inputValue(void *context, IOReturn result, void *sender, IOHIDValueR
 	// Releases are always accepted so that no key stays stuck down.
 	if (pressed && SDL_GetKeyboardFocus() == nullptr)
 		return;
+	if (capturing && pressed)
+	{
+		// Swallowed. The matching release is ignored since the key isn't marked as pressed.
+		captureResult = usage == kHIDUsage_KeyboardEscape ? CaptureResult::Escape : CaptureResult::Key;
+		capturedKeyboard = it->second;
+		return;
+	}
 	DEBUG_LOG(INPUT, "HID key %02x %s on %s", usage, pressed ? "down" : "up", keyboard.unique_id().c_str());
 	keyboard.keyInput(usage, pressed);
 }
@@ -240,6 +250,7 @@ static void stop()
 	}
 	keyboards.clear();
 	devices.clear();
+	stopCapture();
 	IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 	IOHIDManagerClose(manager, kIOHIDOptionsTypeNone);
 	CFRelease(manager);
@@ -308,6 +319,28 @@ void term()
 bool active()
 {
 	return manager != nullptr;
+}
+
+void startCapture()
+{
+	capturing = true;
+	captureResult = CaptureResult::None;
+	capturedKeyboard = nullptr;
+}
+
+void stopCapture()
+{
+	capturing = false;
+	capturedKeyboard = nullptr;
+}
+
+CaptureResult pollCapture(std::shared_ptr<GamepadDevice>& keyboard)
+{
+	CaptureResult result = captureResult;
+	captureResult = CaptureResult::None;
+	keyboard = capturedKeyboard;
+	capturedKeyboard = nullptr;
+	return result;
 }
 
 }

@@ -19,6 +19,9 @@
 // separately so that each one can be assigned to its own maple port.
 #pragma once
 #if defined(__APPLE__) && !defined(TARGET_IPHONE)
+#include <memory>
+
+class GamepadDevice;
 
 namespace machid {
 
@@ -27,6 +30,13 @@ void update();
 void term();
 // True when HID keyboards are feeding the emulator instead of the SDL keyboard
 bool active();
+
+// Keyboard assignment. While capturing, key presses are not sent to the emulator
+// and the keyboard on which a key is pressed is reported by pollCapture().
+enum class CaptureResult { None, Key, Escape };
+void startCapture();
+void stopCapture();
+CaptureResult pollCapture(std::shared_ptr<GamepadDevice>& keyboard);
 
 }
 

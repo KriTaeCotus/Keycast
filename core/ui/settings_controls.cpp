@@ -21,6 +21,7 @@
 #include "IconsFontAwesome6.h"
 #include "input/gamepad_device.h"
 #include "input/keyboard_device.h"
+#include "sdl/mac_hid_keyboard.h"
 #include "input/mouse.h"
 #include "hw/maple/maple_devs.h"
 #include "vgamepad.h"
@@ -999,6 +1000,65 @@ static void gamepadSettingsPopup(const std::shared_ptr<GamepadDevice>& gamepad)
 	}
 }
 
+#if defined(__APPLE__) && !defined(TARGET_IPHONE)
+// Assigns the next keyboard used to port A, then the next one to port B.
+// Other keyboards can only be used for the emulator controls.
+static void keyboardAssignmentPopup()
+{
+	static int player;
+	static std::shared_ptr<GamepadDevice> player1;
+
+	if (ImGui::Button(T("Assign Keyboards")))
+	{
+		player = 0;
+		player1 = nullptr;
+		machid::startCapture();
+		ImGui::OpenPopup(T("Assign Keyboards"));
+	}
+	if (!ImGui::BeginPopupModal(T("Assign Keyboards"), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
+		return;
+	ImGui::Text("%s", player == 0 ? T("Press any key on Player 1's keyboard (port A)")
+			: T("Press any key on Player 2's keyboard (port B)"));
+	ImGui::TextDisabled("%s", T("Press Escape to cancel"));
+
+	bool done = ImGui::Button(T("Cancel"));
+	std::shared_ptr<GamepadDevice> keyboard;
+	switch (machid::pollCapture(keyboard))
+	{
+	case machid::CaptureResult::Escape:
+		done = true;
+		break;
+	case machid::CaptureResult::Key:
+		if (player == 0)
+		{
+			player1 = keyboard;
+			player = 1;
+		}
+		else if (keyboard != player1)
+		{
+			for (int i = 0; i < GamepadDevice::GetGamepadCount(); i++)
+			{
+				std::shared_ptr<GamepadDevice> gamepad = GamepadDevice::GetGamepad(i);
+				if (dynamic_cast<KeyboardDevice*>(gamepad.get()) != nullptr)
+					gamepad->set_maple_port(gamepad == player1 ? 0 : gamepad == keyboard ? 1 : -1);
+			}
+			GamepadDevice::SaveMaplePorts();
+			done = true;
+		}
+		break;
+	default:
+		break;
+	}
+	if (done || !machid::active())
+	{
+		machid::stopCapture();
+		player1 = nullptr;
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::EndPopup();
+}
+#endif
+
 void gui_settings_controls(std::array<bool, 4>& mapleDevicesChanges, std::array<std::array<bool, 2>, 4>& expDevicesChanges)
 {
 	uiLanguageHandler.init();
@@ -1106,6 +1166,17 @@ void gui_settings_controls(std::array<bool, 4>& mapleDevicesChanges, std::array<
 #if defined(__APPLE__) && !defined(TARGET_IPHONE)
 	OptionCheckbox(T("Separate Keyboards"), config::SeparateKeyboards,
 			T("Read each keyboard separately so that each one can be assigned to its own port. Requires the Input Monitoring permission"));
+	if (machid::active())
+	{
+		ImGui::SameLine(0, uiScaled(16));
+		keyboardAssignmentPopup();
+	}
+	else if (config::SeparateKeyboards)
+	{
+		ImGui::SameLine(0, uiScaled(16));
+		ImGui::TextColored(ImVec4(1.f, 0.6f, 0.f, 1.f), "%s",
+				T("Not active: allow Flycast in System Settings > Privacy & Security > Input Monitoring, then restart Flycast"));
+	}
 #endif
 
 	ImGui::Spacing();

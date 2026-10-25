@@ -172,7 +172,7 @@ static void deviceAdded(void *context, IOReturn result, void *sender, IOHIDDevic
 	if (keyboard == nullptr)
 	{
 		// Default port in case none is saved for this keyboard
-		int port = std::min<int>(keyboards.size() - 1, 3);
+		int port = std::min((int)keyboards.size() - 1, 3);
 		keyboard = std::make_shared<MacHidKeyboard>(port, info);
 		GamepadDevice::Register(keyboard);
 	}

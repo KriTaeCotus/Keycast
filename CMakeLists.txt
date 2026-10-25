@@ -1388,7 +1388,9 @@ if(NOT LIBRETRO)
 					shell/apple/common/util.mm
 					shell/apple/emulator-osx/emulator-osx/SDLApplicationDelegate.h
 					shell/apple/emulator-osx/emulator-osx/SDLApplicationDelegate.mm
-					shell/apple/emulator-osx/emulator-osx/osx-main.mm)
+					shell/apple/emulator-osx/emulator-osx/osx-main.mm
+					core/sdl/mac_hid_keyboard.cpp
+					core/sdl/mac_hid_keyboard.h)
 			set(ASSETS shell/apple/emulator-osx/emulator-osx/Images.xcassets)
 			target_sources(${PROJECT_NAME} PRIVATE ${ASSETS})
 			source_group("Resources" FILES ${ASSETS})
@@ -1421,6 +1423,7 @@ if(NOT LIBRETRO)
 			find_library(AUDIO_TOOLBOX_LIBRARY AudioToolbox)
 			find_library(METAL_LIBRARY Metal)
 			find_library(IOSURFACE_LIBRARY IOSurface)
+			find_library(IOKIT_LIBRARY IOKit)
 			find_library(MULTITOUCH_SUPPORT_LIBRARY MultitouchSupport /System/Library/PrivateFrameworks)
 
 			target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -1429,6 +1432,7 @@ if(NOT LIBRETRO)
 				${AUDIO_TOOLBOX_LIBRARY}
 				${METAL_LIBRARY}
 				${IOSURFACE_LIBRARY}
+				${IOKIT_LIBRARY}
 				${MULTITOUCH_SUPPORT_LIBRARY})
 
 			if(USE_VULKAN)

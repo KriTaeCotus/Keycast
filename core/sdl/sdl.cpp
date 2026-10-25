@@ -14,6 +14,7 @@
 #include "sdl_gamepad.h"
 #include "sdl_keyboard.h"
 #include "sdl_keyboard_mac.h"
+#include "mac_hid_keyboard.h"
 #include "wsi/context.h"
 #include "ui/gui.h"
 #include "emulator.h"
@@ -197,6 +198,9 @@ static void checkRawInput()
 		GamepadDevice::Register(sdl_keyboard);
 	}
 #else
+#ifdef __APPLE__
+	machid::update();
+#endif
 	if (!sdl_keyboard)
 	{
 #ifdef __APPLE__
@@ -301,6 +305,9 @@ void input_sdl_quit()
 	sdl_mice.clear();
 	GamepadDevice::Unregister(sdl_keyboard);
 	sdl_keyboard.reset();
+#ifdef __APPLE__
+	machid::term();
+#endif
 	SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC);
 }
 

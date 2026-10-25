@@ -18,14 +18,20 @@
 #if defined(__APPLE__) && !defined(TARGET_IPHONE)
 #include "mac_hid_keyboard.h"
 #include "cfg/option.h"
+#include "input/keyboard_device.h"
 #include "log/Log.h"
+#include <SDL.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/hid/IOHIDManager.h>
 #include <IOKit/hid/IOHIDKeys.h>
 #include <IOKit/hid/IOHIDUsageTables.h>
 #include <IOKit/hidsystem/IOHIDLib.h>
+#include <algorithm>
+#include <bitset>
 #include <cctype>
+#include <map>
+#include <memory>
 #include <string>
 
 namespace machid {
@@ -45,8 +51,58 @@ struct DeviceInfo
 	std::string shortId;
 };
 
+class MacHidKeyboard : public KeyboardDevice
+{
+public:
+	MacHidKeyboard(int maple_port, const DeviceInfo& info)
+		: KeyboardDevice(maple_port, "HID")
+	{
+		displayName = info.product;
+		if (!info.shortId.empty())
+			displayName += " (" + info.shortId + ")";
+		_name = displayName;
+		_unique_id = info.uniqueId;
+		loadMapping();
+	}
+
+	void keyInput(u8 keycode, bool pressed)
+	{
+		if (pressedKeys[keycode] == pressed)
+			return;
+		pressedKeys[keycode] = pressed;
+		if (settings.input.keyboardLangId != KeyboardLayout::US && keycode == 0x31)	// US: backslash and pipe
+			KeyboardDevice::input(0x32, pressed, 0);	// non-US: hash and tilde
+		else
+			KeyboardDevice::input(keycode, pressed, 0);
+	}
+
+	bool isPressed(u8 keycode) const {
+		return pressedKeys[keycode];
+	}
+
+	void releaseAll()
+	{
+		for (u32 keycode = 0; keycode < pressedKeys.size(); keycode++)
+			if (pressedKeys[keycode])
+				keyInput(keycode, false);
+	}
+
+protected:
+	void refreshName() override {
+		_name = displayName;
+	}
+
+private:
+	std::string displayName;
+	std::bitset<256> pressedKeys;
+};
+
 static IOHIDManagerRef manager;
 static bool permissionDenied;
+// Some keyboards expose several HID interfaces. They are merged into one
+// keyboard if they share the same unique id.
+static std::map<IOHIDDeviceRef, std::shared_ptr<MacHidKeyboard>> devices;
+static std::map<std::string, std::shared_ptr<MacHidKeyboard>> keyboards;
 
 static std::string getStringProperty(IOHIDDeviceRef device, CFStringRef key)
 {
@@ -109,12 +165,32 @@ static void deviceAdded(void *context, IOReturn result, void *sender, IOHIDDevic
 	NOTICE_LOG(INPUT, "HID keyboard added: \"%s\" vendor %04lx product %04lx transport \"%s\" serial \"%s\" physical id \"%s\" location %08lx -> %s",
 			info.product.c_str(), info.vendorId, info.productId, info.transport.c_str(), info.serial.c_str(),
 			info.physicalId.c_str(), info.locationId, info.uniqueId.c_str());
+	std::shared_ptr<MacHidKeyboard>& keyboard = keyboards[info.uniqueId];
+	if (keyboard == nullptr)
+	{
+		// Default port in case none is saved for this keyboard
+		int port = std::min<int>(keyboards.size() - 1, 3);
+		keyboard = std::make_shared<MacHidKeyboard>(port, info);
+		GamepadDevice::Register(keyboard);
+	}
+	devices[device] = keyboard;
 }
 
 static void deviceRemoved(void *context, IOReturn result, void *sender, IOHIDDeviceRef device)
 {
-	DeviceInfo info = getDeviceInfo(device);
-	NOTICE_LOG(INPUT, "HID keyboard removed: %s", info.uniqueId.c_str());
+	auto it = devices.find(device);
+	if (it == devices.end())
+		return;
+	std::shared_ptr<MacHidKeyboard> keyboard = it->second;
+	devices.erase(it);
+	NOTICE_LOG(INPUT, "HID keyboard removed: %s", keyboard->unique_id().c_str());
+	for (const auto& [dev, kb] : devices)
+		if (kb == keyboard)
+			// another interface of this keyboard is still connected
+			return;
+	keyboard->releaseAll();
+	GamepadDevice::Unregister(keyboard);
+	keyboards.erase(keyboard->unique_id());
 }
 
 static void inputValue(void *context, IOReturn result, void *sender, IOHIDValueRef value)
@@ -127,9 +203,17 @@ static void inputValue(void *context, IOReturn result, void *sender, IOHIDValueR
 	if (usage < kHIDUsage_KeyboardA || usage > kHIDUsage_KeyboardRightGUI)
 		return;
 	bool pressed = IOHIDValueGetIntegerValue(value) != 0;
-	IOHIDDeviceRef device = IOHIDElementGetDevice(element);
-	if (pressed)
-		NOTICE_LOG(INPUT, "HID key %02x pressed on %s", usage, getDeviceInfo(device).uniqueId.c_str());
+	auto it = devices.find(IOHIDElementGetDevice(element));
+	if (it == devices.end())
+		return;
+	MacHidKeyboard& keyboard = *it->second;
+	// HID input is received even when another app is active, so ignore
+	// key presses unless the emulator window has the keyboard focus.
+	// Releases are always accepted so that no key stays stuck down.
+	if (pressed && SDL_GetKeyboardFocus() == nullptr)
+		return;
+	DEBUG_LOG(INPUT, "HID key %02x %s on %s", usage, pressed ? "down" : "up", keyboard.unique_id().c_str());
+	keyboard.keyInput(usage, pressed);
 }
 
 static bool checkPermission()
@@ -149,6 +233,13 @@ static void stop()
 {
 	if (manager == nullptr)
 		return;
+	for (auto& [id, keyboard] : keyboards)
+	{
+		keyboard->releaseAll();
+		GamepadDevice::Unregister(keyboard);
+	}
+	keyboards.clear();
+	devices.clear();
 	IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 	IOHIDManagerClose(manager, kIOHIDOptionsTypeNone);
 	CFRelease(manager);
@@ -216,7 +307,7 @@ void term()
 
 bool active()
 {
-	return false;
+	return manager != nullptr;
 }
 
 }

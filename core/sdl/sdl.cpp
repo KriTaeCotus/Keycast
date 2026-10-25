@@ -200,6 +200,16 @@ static void checkRawInput()
 #else
 #ifdef __APPLE__
 	machid::update();
+	if (machid::active())
+	{
+		// Each keyboard is a separate HID device
+		if (sdl_keyboard)
+		{
+			GamepadDevice::Unregister(sdl_keyboard);
+			sdl_keyboard = nullptr;
+		}
+		return;
+	}
 #endif
 	if (!sdl_keyboard)
 	{
@@ -426,6 +436,20 @@ void input_sdl_handle()
 						}
 						else
 #endif
+#ifdef __APPLE__
+						if (sdl_keyboard == nullptr)
+						{
+							for (int i = 0; i < GamepadDevice::GetGamepadCount(); i++)
+							{
+								auto gamepad = GamepadDevice::GetGamepad(i);
+								if (dynamic_cast<KeyboardDevice*>(gamepad.get()) != nullptr
+										&& gamepad->get_input_mapping()->get_button_id(0, inputSet) != EMU_BTN_NONE)
+									return true;
+							}
+							return false;
+						}
+						else
+#endif
 						{
 							return (sdl_keyboard->get_input_mapping()->get_button_id(0, inputSet) != EMU_BTN_NONE);
 						}
@@ -443,7 +467,7 @@ void input_sdl_handle()
 						if (card_reader::barcodeAvailable() && handleBarcodeScanner(event))
 							break;
 					}
-					if (!config::UseRawInput)
+					if (!config::UseRawInput && sdl_keyboard)
 						sdl_keyboard->input(event.key.keysym.scancode, event.type == SDL_KEYDOWN);
 				}
 				break;

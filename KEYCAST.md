@@ -13,12 +13,13 @@ On a Dreamcast, each keyboard plugs into its own controller port, and each playe
 - **Stable identity.** Each keyboard is identified by its serial number (the Bluetooth address for Bluetooth keyboards), or by its USB port location when it has no serial. This lets the port assignment survive restarts and reconnections, and lets two identical keyboards be told apart.
 - **Assignment.** Settings > Controls > **Assign Keyboards** asks you to press a key on Player 1's keyboard, then on Player 2's. Those become ports A and B. Every other keyboard is set to no port, so it still works for the menus and hotkeys but doesn't type in the game. Assignments are saved in `emu.cfg`.
 - **Everything else is unchanged.** With the option off (the default), Keycast behaves exactly like Flycast. Mice, controllers, fullscreen and the menus work as usual either way.
+- **Separate from Flycast.** Keycast has its own app name and identifier (`com.kritaecotus.Keycast`) and keeps its settings, saves and BIOS files in `~/Library/Application Support/Keycast/`, so it can be installed next to a regular Flycast without either affecting the other.
 
 The code is in `core/sdl/mac_hid_keyboard.cpp`, with small hooks in `core/sdl/sdl.cpp`, `core/cfg/option.*` and `core/ui/settings_controls.cpp`.
 
 ## Playing The Typing of the Dead
 
-1. Settings > Controls: tick **Separate Keyboards**. macOS asks for the **Input Monitoring** permission: allow Keycast (or Flycast) in System Settings > Privacy & Security > Input Monitoring, then restart the app.
+1. Settings > Controls: tick **Separate Keyboards**. macOS asks for the **Input Monitoring** permission: allow Keycast in System Settings > Privacy & Security > Input Monitoring, then restart the app.
 2. Click **Assign Keyboards** and press a key on each player's keyboard.
 3. Under **Dreamcast Devices**, set Port A and Port B to **Keyboard**.
 4. Start the game.

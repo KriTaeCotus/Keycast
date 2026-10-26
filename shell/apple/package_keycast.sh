@@ -30,9 +30,9 @@ fi
 echo '== Building Release'
 cmake --build build --config Release
 
-src="$(find build -maxdepth 3 -type d -name Flycast.app -path '*Release*' | head -n 1)"
+src="$(find build -maxdepth 3 -type d -name Keycast.app -path '*Release*' | head -n 1)"
 if [ -z "$src" ]; then
-    echo 'Release Flycast.app not found in build/' >&2
+    echo 'Release Keycast.app not found in build/' >&2
     exit 1
 fi
 
@@ -46,7 +46,7 @@ xattr -cr "$app"
 # The local build links Homebrew's libomp and libpng dynamically. Copy them into
 # the app so that it runs on Macs without Homebrew.
 echo '== Bundling Homebrew libraries'
-dylibbundler -of -b -x "$app/Contents/MacOS/Flycast" \
+dylibbundler -of -b -x "$app/Contents/MacOS/Keycast" \
     -d "$app/Contents/Frameworks/" -p @executable_path/../Frameworks/
 
 # Modified binaries must be signed again, from the inside out
@@ -63,9 +63,9 @@ shopt -u nullglob
 codesign --force -s - "$app"
 codesign --verify --deep --strict "$app"
 
-if otool -L "$app/Contents/MacOS/Flycast" | grep -q -E '/opt/homebrew/|/usr/local/(opt|Cellar)/'; then
+if otool -L "$app/Contents/MacOS/Keycast" | grep -q -E '/opt/homebrew/|/usr/local/(opt|Cellar)/'; then
     echo 'The app still depends on Homebrew libraries:' >&2
-    otool -L "$app/Contents/MacOS/Flycast" | grep -E '/opt/homebrew/|/usr/local/(opt|Cellar)/' >&2
+    otool -L "$app/Contents/MacOS/Keycast" | grep -E '/opt/homebrew/|/usr/local/(opt|Cellar)/' >&2
     exit 1
 fi
 

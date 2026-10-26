@@ -78,9 +78,9 @@ extern "C" int SDL_main(int argc, char *argv[])
     char *home = getenv("HOME");
     if (home != NULL)
     {
-        std::string config_dir = std::string(home) + "/.flycast/";
+        std::string config_dir = std::string(home) + "/.keycast/";
 		if (!file_exists(config_dir))
-			config_dir = std::string(home) + "/Library/Application Support/Flycast/";
+			config_dir = std::string(home) + "/Library/Application Support/Keycast/";
 		
 		/* Different config folder for multiple instances */
 		if (getppid() == 1)

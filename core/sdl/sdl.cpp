@@ -15,6 +15,11 @@
 #include "sdl_keyboard.h"
 #include "sdl_keyboard_mac.h"
 #include "mac_hid_keyboard.h"
+#if defined(__APPLE__) && !defined(TARGET_IPHONE)
+#define WINDOW_TITLE "Keycast"
+#else
+#define WINDOW_TITLE "Flycast"
+#endif
 #include "wsi/context.h"
 #include "ui/gui.h"
 #include "emulator.h"
@@ -120,7 +125,7 @@ static void setWindowTitleGame()
 		else
 			title = settings.content.title;
 	}
-	SDL_SetWindowTitle(window, ("Flycast - " + title).c_str());
+	SDL_SetWindowTitle(window, (WINDOW_TITLE " - " + title).c_str());
 }
 
 static void captureMouse(bool capture)
@@ -143,7 +148,7 @@ static void captureMouse(bool capture)
 		{
 			if (config::UseRawInput)
 				SDL_ShowCursor(SDL_DISABLE);
-			SDL_SetWindowTitle(window, "Flycast - mouse capture");
+			SDL_SetWindowTitle(window, WINDOW_TITLE " - mouse capture");
 			mouseCaptured = true;
 		}
 	}
@@ -154,7 +159,7 @@ static void emuEventCallback(Event event, void *)
 	switch (event)
 	{
 	case Event::Terminate:
-		SDL_SetWindowTitle(window, "Flycast");
+		SDL_SetWindowTitle(window, WINDOW_TITLE);
 		sdl_stopHaptic(0);
 		break;
 	case Event::Pause:
@@ -906,7 +911,7 @@ bool sdl_recreate_window(u32 flags)
 	flags |= SDL_WINDOW_FULLSCREEN;
 #endif
 
-	window = SDL_CreateWindow("Flycast", windowPos.x, windowPos.y,
+	window = SDL_CreateWindow(WINDOW_TITLE, windowPos.x, windowPos.y,
 			windowPos.w * hdpiScaling, windowPos.h * hdpiScaling, flags);
 	if (window == nullptr)
 	{

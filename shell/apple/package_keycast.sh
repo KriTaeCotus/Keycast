@@ -37,6 +37,8 @@ fi
 echo "== Copying $src to $app"
 rm -rf "$app" "$zip"
 cp -R "$src" "$app"
+# Finder metadata copied along with the app makes codesign fail
+xattr -cr "$app"
 
 # The local build links Homebrew's libomp and libpng dynamically. Copy them into
 # the app so that it runs on Macs without Homebrew.

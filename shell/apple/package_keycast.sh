@@ -6,6 +6,8 @@
 #
 # Requires the Xcode project from shell/apple/generate_xcode_project.command
 # and Homebrew. Replaces any Keycast.app and Keycast.zip in the output folder.
+# The app is prepared in build/package since codesign fails in folders synced
+# with iCloud (such as the Desktop) because of the metadata iCloud adds to files.
 
 set -euo pipefail
 
@@ -13,8 +15,8 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 cd "$script_dir/../../"
 
 out_dir="${1:-$HOME/Desktop}"
-app="$out_dir/Keycast.app"
-zip="$out_dir/Keycast.zip"
+work_dir="$PWD/build/package"
+app="$work_dir/Keycast.app"
 
 if [ ! -d build/flycast.xcodeproj ]; then
     echo 'No Xcode project found. Run shell/apple/generate_xcode_project.command first.' >&2
@@ -35,7 +37,8 @@ if [ -z "$src" ]; then
 fi
 
 echo "== Copying $src to $app"
-rm -rf "$app" "$zip"
+rm -rf "$work_dir"
+mkdir -p "$work_dir"
 cp -R "$src" "$app"
 # Finder metadata copied along with the app makes codesign fail
 xattr -cr "$app"
@@ -66,7 +69,10 @@ if otool -L "$app/Contents/MacOS/Flycast" | grep -q -E '/opt/homebrew/|/usr/loca
     exit 1
 fi
 
-echo '== Zipping'
-ditto -c -k --keepParent "$app" "$zip"
+echo "== Copying Keycast.app and Keycast.zip to $out_dir"
+ditto -c -k --keepParent "$app" "$work_dir/Keycast.zip"
+rm -rf "$out_dir/Keycast.app" "$out_dir/Keycast.zip"
+ditto "$app" "$out_dir/Keycast.app"
+cp "$work_dir/Keycast.zip" "$out_dir/Keycast.zip"
 
-printf '\033[1;32m%s\033[0m\n' "Created $app and $zip"
+printf '\033[1;32m%s\033[0m\n' "Created $out_dir/Keycast.app and $out_dir/Keycast.zip"
